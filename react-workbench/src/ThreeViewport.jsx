@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
-export default function ThreeViewport({ rotation, intensity }) {
+export default function ThreeViewport({ rotation, scale, intensity, onModelLoaded }) {
   const canvasRef = useRef(null)
   const modelRef = useRef(null)
+  const baseScaleRef = useRef(1)
   const [label, setLabel] = useState('透视视图 · 35 mm')
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export default function ThreeViewport({ rotation, intensity }) {
     grid.position.y = -1.19
     scene.add(grid)
     const starter = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 2), new THREE.MeshStandardMaterial({ color: '#7c92ff', metalness: 0.35, roughness: 0.25 }))
+    starter.name = '默认模型'
     scene.add(starter)
     modelRef.current = starter
 
@@ -41,6 +43,7 @@ export default function ThreeViewport({ rotation, intensity }) {
   }, [])
 
   useEffect(() => { if (modelRef.current) modelRef.current.rotation.y = THREE.MathUtils.degToRad(rotation) }, [rotation])
+  useEffect(() => { if (modelRef.current) modelRef.current.scale.setScalar(baseScaleRef.current * scale) }, [scale])
   useEffect(() => { if (canvasRef.current?._three) canvasRef.current._three.key.intensity = intensity / 35 }, [intensity])
 
   const importModel = (event) => {
@@ -48,15 +51,29 @@ export default function ThreeViewport({ rotation, intensity }) {
     const canvas = canvasRef.current
     if (!file || !canvas?._three) return
     if (!/\.(glb|gltf)$/i.test(file.name)) { setLabel('请使用 .glb 或 .gltf 文件'); return }
+    setLabel(`正在导入 · ${file.name}`)
     const url = URL.createObjectURL(file)
     new GLTFLoader().load(url, (gltf) => {
       const { scene, starter } = canvas._three
       scene.remove(modelRef.current || starter)
-      modelRef.current = gltf.scene
-      scene.add(gltf.scene)
+      const root = gltf.scene
+      const bounds = new THREE.Box3().setFromObject(root)
+      const size = bounds.getSize(new THREE.Vector3())
+      const center = bounds.getCenter(new THREE.Vector3())
+      const largestSide = Math.max(size.x, size.y, size.z) || 1
+      baseScaleRef.current = 2 / largestSide
+      root.scale.setScalar(baseScaleRef.current * scale)
+      root.position.sub(center.multiplyScalar(baseScaleRef.current * scale))
+      root.position.y = -1.18
+      root.rotation.y = THREE.MathUtils.degToRad(rotation)
+      root.name = file.name.replace(/\.(glb|gltf)$/i, '') || '导入模型'
+      modelRef.current = root
+      scene.add(root)
+      onModelLoaded?.(root.name)
       setLabel(`已导入 · ${file.name}`)
       URL.revokeObjectURL(url)
-    }, undefined, () => { setLabel('模型读取失败，请尝试 GLB 文件'); URL.revokeObjectURL(url) })
+    }, undefined, () => { setLabel('模型读取失败，请优先尝试单文件 GLB'); URL.revokeObjectURL(url) })
+    event.target.value = ''
   }
 
   return <section className="viewport">
