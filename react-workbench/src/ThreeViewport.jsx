@@ -14,6 +14,7 @@ export default function ThreeViewport({ rotation, scale, intensity, onModelLoade
     scene.background = new THREE.Color('#111722')
     const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100)
     camera.position.set(3.4, 2.4, 5.4)
+    camera.lookAt(0, 0, 0)
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.outputColorSpace = THREE.SRGBColorSpace
@@ -63,8 +64,8 @@ export default function ThreeViewport({ rotation, scale, intensity, onModelLoade
       const largestSide = Math.max(size.x, size.y, size.z) || 1
       baseScaleRef.current = 2 / largestSide
       root.scale.setScalar(baseScaleRef.current * scale)
-      root.position.sub(center.multiplyScalar(baseScaleRef.current * scale))
-      root.position.y = -1.18
+      const fittedScale = baseScaleRef.current * scale
+      root.position.set(-center.x * fittedScale, -bounds.min.y * fittedScale - 1.18, -center.z * fittedScale)
       root.rotation.y = THREE.MathUtils.degToRad(rotation)
       root.name = file.name.replace(/\.(glb|gltf)$/i, '') || '导入模型'
       modelRef.current = root
