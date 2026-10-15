@@ -2,25 +2,29 @@ import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './styles.css'
 import ThreeViewport from './ThreeViewport.jsx'
-const Slider = ({ label, value, suffix = '', onChange, min = 0, max = 100, step = 1 }) => (
-  <div className="control">
-    <label>
-      {label}
-      <strong>
-        {value}
-        {suffix}
-      </strong>
-    </label>
-    <input type="range" min={min} max={max} step={step} value={value} onChange={onChange} />
-  </div>
-)
+
+function Slider({ label, value, suffix = '', onChange, min = 0, max = 100, step = 1 }) {
+  return (
+    <div className="control">
+      <label>
+        {label}
+        <strong>
+          {value}
+          {suffix}
+        </strong>
+      </label>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={onChange} />
+    </div>
+  )
+}
+
 function App() {
-  const [rotation, setRotation] = useState(18),
-    [scale, setScale] = useState(1),
-    [modelName, setModelName] = useState('默认模型'),
-    [selected, setSelected] = useState('model'),
-    [focus, setFocus] = useState(0),
-    [toast, setToast] = useState('')
+  const [rotation, setRotation] = useState(18)
+  const [scale, setScale] = useState(1)
+  const [modelName, setModelName] = useState('默认模型')
+  const [selected, setSelected] = useState('model')
+  const [focus, setFocus] = useState(0)
+  const [toast, setToast] = useState('')
   const [lights, setLights] = useState([
     {
       id: 'light-1',
@@ -34,48 +38,84 @@ function App() {
   const [cameras, setCameras] = useState([
     { id: 'camera-1', name: 'Camera_01', position: [3.4, 2.4, 5.4] },
   ])
-  const activeCamera = cameras.find((c) => c.id === selected) || cameras[0],
-    activeLight = lights.find((l) => l.id === selected)
-  const flash = (m) => {
-    setToast(m)
-    setTimeout(() => setToast(''), 1800)
+  const activeLight = lights.find((item) => item.id === selected)
+  const activeCamera = cameras.find((item) => item.id === selected) || cameras[0]
+  const flash = (message) => {
+    setToast(message)
+    window.setTimeout(() => setToast(''), 1800)
   }
   const updateLight = (key, value) =>
-    setLights((a) => a.map((l) => (l.id === activeLight.id ? { ...l, [key]: value } : l)))
+    setLights((all) =>
+      all.map((item) => (item.id === activeLight.id ? { ...item, [key]: value } : item)),
+    )
   const updateCamera = (axis, value) =>
-    setCameras((a) =>
-      a.map((c) =>
-        c.id === activeCamera.id
+    setCameras((all) =>
+      all.map((item) =>
+        item.id === activeCamera.id
           ? {
-              ...c,
-              position: c.position.map((p, i) => (i === axis ? value : p)),
+              ...item,
+              position: item.position.map((position, index) => (index === axis ? value : position)),
             }
-          : c,
+          : item,
       ),
     )
   const addLight = () => {
-    const n = lights.length + 1,
-      item = {
-        id: `light-${Date.now()}`,
-        name: `Light_${n}`,
-        type: 'point',
-        intensity: 20,
-        color: '#ffe4b5',
-        position: [-3, 3, 2],
-      }
-    setLights((a) => [...a, item])
-    setSelected(item.id)
+    const index = lights.length + 1
+    const light = {
+      id: `light-${Date.now()}`,
+      name: `Light_${index}`,
+      type: 'point',
+      intensity: 20,
+      color: '#ffe4b5',
+      position: [-3, 3, 2],
+    }
+    setLights((all) => [...all, light])
+    setSelected(light.id)
   }
   const addCamera = () => {
-    const n = cameras.length + 1,
-      item = {
-        id: `camera-${Date.now()}`,
-        name: `Camera_${String(n).padStart(2, '0')}`,
-        position: [4, 3, 5],
-      }
-    setCameras((a) => [...a, item])
-    setSelected(item.id)
+    const index = cameras.length + 1
+    const camera = {
+      id: `camera-${Date.now()}`,
+      name: `Camera_${String(index).padStart(2, '0')}`,
+      position: [4, 3, 5],
+    }
+    setCameras((all) => [...all, camera])
+    setSelected(camera.id)
   }
+  const deleteObject = (id, type) => {
+    if (type === 'light') setLights((all) => all.filter((item) => item.id !== id))
+    if (type === 'camera' && cameras.length > 1)
+      setCameras((all) => all.filter((item) => item.id !== id))
+    setSelected('model')
+  }
+  const syncTransform = (id, position, rotationY, objectScale) => {
+    if (id === 'model') {
+      setRotation(Math.round((rotationY * 180) / Math.PI))
+      setScale(Number(objectScale.toFixed(2)))
+    } else if (lights.some((item) => item.id === id)) {
+      setLights((all) => all.map((item) => (item.id === id ? { ...item, position } : item)))
+    } else {
+      setCameras((all) => all.map((item) => (item.id === id ? { ...item, position } : item)))
+    }
+  }
+  const TreeItem = ({ id, icon, name, type }) => (
+    <div className="tree-row">
+      <button className={selected === id ? 'active' : ''} onClick={() => setSelected(id)}>
+        <span>{icon}</span>
+        {name}
+        <small>{type}</small>
+      </button>
+      {(type === '灯光' || (type === '相机' && cameras.length > 1)) && (
+        <button
+          className="delete-object"
+          title={`删除${name}`}
+          onClick={() => deleteObject(id, type === '灯光' ? 'light' : 'camera')}
+        >
+          ×
+        </button>
+      )}
+    </div>
+  )
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -106,35 +146,12 @@ function App() {
           <section className="section">
             <h2>场景结构</h2>
             <nav className="tree">
-              <button
-                className={selected === 'model' ? 'active' : ''}
-                onClick={() => setSelected('model')}
-              >
-                <span>◇</span>
-                {modelName}
-                <small>模型</small>
-              </button>
-              {lights.map((l) => (
-                <button
-                  key={l.id}
-                  className={selected === l.id ? 'active' : ''}
-                  onClick={() => setSelected(l.id)}
-                >
-                  <span>☼</span>
-                  {l.name}
-                  <small>灯光</small>
-                </button>
+              <TreeItem id="model" icon="◇" name={modelName} type="模型" />
+              {lights.map((item) => (
+                <TreeItem key={item.id} id={item.id} icon="☼" name={item.name} type="灯光" />
               ))}
-              {cameras.map((c) => (
-                <button
-                  key={c.id}
-                  className={selected === c.id ? 'active' : ''}
-                  onClick={() => setSelected(c.id)}
-                >
-                  <span>◉</span>
-                  {c.name}
-                  <small>相机</small>
-                </button>
+              {cameras.map((item) => (
+                <TreeItem key={item.id} id={item.id} icon="◉" name={item.name} type="相机" />
               ))}
             </nav>
           </section>
@@ -151,12 +168,14 @@ function App() {
           rotation={rotation}
           scale={scale}
           lights={lights}
-          cameraConfig={activeCamera}
+          selected={selected}
+          cameraConfig={{ active: activeCamera, all: cameras }}
           focusSignal={focus}
-          onModelLoaded={(n) => {
-            setModelName(n)
+          onModelLoaded={(name) => {
+            setModelName(name)
             setSelected('model')
           }}
+          onTransform={syncTransform}
         />
         <aside className="panel inspector">
           {selected === 'model' ? (
@@ -168,7 +187,7 @@ function App() {
                 suffix="°"
                 min={-180}
                 max={180}
-                onChange={(e) => setRotation(+e.target.value)}
+                onChange={(event) => setRotation(+event.target.value)}
               />
               <Slider
                 label="缩放"
@@ -177,7 +196,7 @@ function App() {
                 min={0.1}
                 max={3}
                 step={0.01}
-                onChange={(e) => setScale(+e.target.value)}
+                onChange={(event) => setScale(+event.target.value)}
               />
             </section>
           ) : activeLight ? (
@@ -188,7 +207,7 @@ function App() {
                 <input
                   type="color"
                   value={activeLight.color}
-                  onChange={(e) => updateLight('color', e.target.value)}
+                  onChange={(event) => updateLight('color', event.target.value)}
                 />
               </div>
               <Slider
@@ -197,26 +216,28 @@ function App() {
                 min={0}
                 max={50}
                 step={0.1}
-                onChange={(e) => updateLight('intensity', +e.target.value)}
+                onChange={(event) => updateLight('intensity', +event.target.value)}
               />
+              <p>用 Gizmo 移动灯光位置。</p>
             </section>
           ) : (
             <section className="section">
               <h2>相机 · {activeCamera.name}</h2>
-              <button className="neutral" onClick={() => setFocus((x) => x + 1)}>
+              <button className="neutral" onClick={() => setFocus((value) => value + 1)}>
                 聚焦模型 / 重置视角
               </button>
-              {['X', 'Y', 'Z'].map((n, i) => (
+              {['X', 'Y', 'Z'].map((axis, index) => (
                 <Slider
-                  key={n}
-                  label={`位置 ${n}`}
-                  value={activeCamera.position[i]}
+                  key={axis}
+                  label={`位置 ${axis}`}
+                  value={activeCamera.position[index].toFixed(1)}
                   min={-10}
                   max={10}
                   step={0.1}
-                  onChange={(e) => updateCamera(i, +e.target.value)}
+                  onChange={(event) => updateCamera(index, +event.target.value)}
                 />
               ))}
+              <p>用 Gizmo 移动相机位置。</p>
             </section>
           )}
           <section className="section">
@@ -248,6 +269,7 @@ function App() {
     </div>
   )
 }
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />
