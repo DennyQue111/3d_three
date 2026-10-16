@@ -1,42 +1,56 @@
 # 3D THREE
 
-一个基于 React、Vite 和 Three.js 的浏览器端 3D 工作台原型，用于导入模型、调整灯光与镜头，并为模型动画、后期特效和视频导出建立界面基础。
+一个 React + Three.js 3D 工作台与 Node.js + TypeScript API 的学习型 monorepo。可在浏览器导入 GLB/GLTF、编辑模型/灯光/相机，并将场景配置保存到本地项目数据。
 
 ## 启动
 
+首次安装依赖：
+
 ```powershell
-cd react-workbench
 npm install
-npm run dev
 ```
 
-浏览器访问 Vite 输出的本地地址（通常为 http://localhost:5173）。
+在两个终端分别启动 API 与前端：
 
-## 当前已实现
+```powershell
+npm run dev:api
+npm run dev:web
+```
 
-- React + Vite 工作台界面
-- Three.js WebGL 视口、地面与默认几何体
-- GLB / GLTF 文件选择与加载（优先使用单文件 GLB）
-- 模型 Y 轴旋转
-- 主方向光强度调节
-- 播放状态 UI 与时间轴界面
+- Web 工作台：通常为 `http://localhost:5173`
+- Node API：`http://127.0.0.1:3000`
+- API 健康检查：`http://127.0.0.1:3000/api/health`
 
-## 当前为 UI 占位的功能
+## 当前能力
 
-- 保存草稿与项目管理
-- 视频导出
-- 额外灯光、相机、环境的创建与编辑
-- 材质编辑、景深、Bloom 与颗粒特效
-- 缩放、环境亮度、关键帧和真实动画播放
-- FBX / OBJ 导入（尚未添加对应 Loader）
+- GLB / GLTF 模型导入与自动取景
+- 鼠标视口控制：左键旋转、右键平移、滚轮缩放
+- Blender 风格 Gizmo：`G` 移动、`R` 旋转、`S` 缩放
+- 添加、选择、移动和删除灯光与额外相机
+- 灯光颜色、强度及相机位置编辑
+- Node API 保存项目 JSON，以及加载最近保存的场景配置
 
-## 架构建议
-
-绝大多数交互可以先保持纯前端：模型导入、灯光、相机、材质、轨道动画、后期预览都由 Three.js 在浏览器完成。
-
-需要后端的场景主要是：账号与云端项目保存、大模型文件持久化、多用户协作、服务器渲染、长时间视频导出和渲染队列。若后续引入后端，建议使用 Node.js + TypeScript：能与 Vite/React 共享类型与场景数据结构，部署和开发也更统一。Python 更适合后续需要 Blender 自动化、离线资产处理或机器学习工作流时作为独立渲染/处理服务。
+> 恢复项目会还原场景参数；浏览器出于安全原因无法自动重新读取本地模型文件，因此需要手动重新导入模型。
 
 ## 目录
 
-- `react-workbench/` — 前端应用
-- `react-workbench/src/ThreeViewport.jsx` — Three.js 场景与 GLTFLoader 导入逻辑
+```text
+apps/
+  web/       React + Vite + Three.js 前端
+  api/       Fastify + TypeScript Node API
+packages/
+  shared/    前后端共享的场景数据类型
+```
+
+## 数据保存
+
+第一版 API 将项目写入 `apps/api/data/projects.json`。这是为了清晰展示路由、请求校验与文件持久化；后续可以将该实现替换为 SQLite 或 PostgreSQL。
+
+## 常用命令
+
+```powershell
+npm run format
+npm run build
+npm run dev:web
+npm run dev:api
+```

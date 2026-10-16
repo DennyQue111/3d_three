@@ -1,0 +1,14 @@
+{
+  "name": "3d-three",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace @3d-three/web",
+    "dev:api": "npm run dev --workspace @3d-three/api",
+    "build": "npm run build --workspaces --if-present",
+    "format": "npm run format --workspace @3d-three/web"
+  }
+}

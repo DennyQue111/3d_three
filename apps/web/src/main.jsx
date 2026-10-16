@@ -2,6 +2,7 @@ import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './styles.css'
 import ThreeViewport from './ThreeViewport.jsx'
+import { listProjects, saveProject } from './api/projects.js'
 
 function Slider({ label, value, suffix = '', onChange, min = 0, max = 100, step = 1 }) {
   return (
@@ -43,6 +44,33 @@ function App() {
   const flash = (message) => {
     setToast(message)
     window.setTimeout(() => setToast(''), 1800)
+  }
+  const saveCurrentProject = async () => {
+    try {
+      await saveProject({
+        name: `场景 - ${modelName}`,
+        scene: { modelName, modelRotationY: rotation, modelScale: scale, lights, cameras },
+      })
+      flash('项目已保存到 Node API')
+    } catch {
+      flash('保存失败：请确认 API 已通过 npm run dev:api 启动')
+    }
+  }
+  const loadLatestProject = async () => {
+    try {
+      const projects = await listProjects()
+      const project = projects.at(-1)
+      if (!project) return flash('暂无已保存项目')
+      setModelName(project.scene.modelName)
+      setRotation(project.scene.modelRotationY)
+      setScale(project.scene.modelScale)
+      setLights(project.scene.lights)
+      setCameras(project.scene.cameras)
+      setSelected('model')
+      flash('已恢复最近项目；模型文件需重新导入')
+    } catch {
+      flash('读取失败：请确认 API 已通过 npm run dev:api 启动')
+    }
   }
   const updateLight = (key, value) =>
     setLights((all) =>
@@ -124,7 +152,10 @@ function App() {
           3D THREE <small>Motion Studio</small>
         </div>
         <div className="grow" />
-        <button className="neutral" onClick={() => flash('项目保存将在下一阶段接入')}>
+        <button className="neutral" onClick={loadLatestProject}>
+          加载最近
+        </button>
+        <button className="neutral" onClick={saveCurrentProject}>
           保存草稿
         </button>
         <button className="export" onClick={() => flash('视频导出将在动画阶段接入')}>
