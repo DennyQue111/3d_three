@@ -41,7 +41,8 @@ export default function ThreeViewport({
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.outputColorSpace = THREE.SRGBColorSpace
     scene.add(new THREE.HemisphereLight('#b8d9ff', '#1a2030', 0.7))
-    scene.add(transform)
+    scene.add(transform.getHelper())
+    transform.setSize(1.25)
 
     transform.addEventListener('dragging-changed', (event) => {
       orbit.enabled = !event.value
@@ -137,6 +138,7 @@ export default function ThreeViewport({
     const object = objectsRef.current.get(selected)
     if (!runtime || !object) return
     runtime.transform.attach(object)
+    runtime.transform.getHelper().visible = true
   }, [selected, lights, cameraConfig.all])
 
   useEffect(() => {
